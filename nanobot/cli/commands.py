@@ -300,6 +300,22 @@ def _print_deprecated_memory_window_notice(config: Config) -> None:
 # ============================================================================
 
 
+def _prevent_idle_sleep() -> None:
+    """Spawn a caffeinate process tied to our PID to prevent macOS idle sleep."""
+    import platform
+    import subprocess
+    if platform.system() != "Darwin":
+        return
+    try:
+        subprocess.Popen(
+            ["caffeinate", "-i", "-w", str(os.getpid())],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except FileNotFoundError:
+        pass
+
+
 @app.command()
 def gateway(
     port: int | None = typer.Option(None, "--port", "-p", help="Gateway port"),
@@ -324,6 +340,9 @@ def gateway(
     config = _load_runtime_config(config, workspace)
     _print_deprecated_memory_window_notice(config)
     port = port if port is not None else config.gateway.port
+    _prevent_idle_sleep()
+
+    console.print(f"{__logo__} Starting nanobot gateway on port {port}...")
 
     console.print(f"{__logo__} Starting nanobot gateway on port {port}...")
     sync_workspace_templates(config.workspace_path)
